@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from analyse import validate, complement, transcribe, find_start_codon, find_stop_codon
 data = {}
@@ -6,7 +7,16 @@ data = {}
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 data: dict[int, dict] = {}
 
