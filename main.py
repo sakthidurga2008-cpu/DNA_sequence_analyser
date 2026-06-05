@@ -2,10 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from analyse import validate, complement, transcribe, find_start_codon, find_stop_codon
-data = {}
- 
-from fastapi import FastAPI
-from pydantic import BaseModel
 
 
 app = FastAPI()
@@ -36,8 +32,9 @@ def post_data(id: int, item: Data):
     item.seq = item.seq.upper() 
     if not validate(item.seq):
         return {"error": "Invalid DNA sequence"}
-    data[id] = item.dict()
-    return {"message": "Data added successfully", "id": id}
+    next_id = max(data.keys(), default=0) + 1
+    data[next_id] = item.model_dump()
+    return {"message": "Data added successfully", "id": next_id}
 
 @app.get("/")
 def greet():
@@ -46,7 +43,7 @@ def greet():
 
 @app.get("/Data")
 def get_data():
-    return data
+    return [{"id": item_id, **item_data} for item_id, item_data in sorted(data.items())]
 
 
 @app.get("/Data/{id}")
