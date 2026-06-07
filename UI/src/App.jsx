@@ -8,6 +8,22 @@ const formatCodonIndex = (value) => {
   return value ?? "-";
 };
 
+const formatCellValue = (value) => {
+  if (value === -1) {
+    return "Not found";
+  }
+  if (value === null || value === undefined) {
+    return "-";
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
+};
+
+// Use current host/protocol so frontend works whether served from localhost or 127.0.0.1
+const API_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
+
 function IconHome({ className = "w-5 h-5" }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={className}>
@@ -137,7 +153,7 @@ function Upload() {
     const payload = { name, age: Number(age), seq: seq.toUpperCase() };
 
     try {
-      const allDataResponse = await fetch("http://127.0.0.1:8000/Data");
+      const allDataResponse = await fetch(`${API_BASE}/Data`);
       let nextId = 1;
       if (allDataResponse.ok) {
         const allData = await allDataResponse.json();
@@ -147,7 +163,7 @@ function Upload() {
         }
       }
 
-      const response = await fetch(`http://127.0.0.1:8000/Data/${nextId}`, {
+      const response = await fetch(`${API_BASE}/Data/${nextId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -230,9 +246,11 @@ function Analyse() {
     }
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/Data/analyse/${inputId}`);
+      const response = await fetch(`${API_BASE}/Data/analyse/${inputId}`);
+      // network-level failure will throw and be caught below
       if (!response.ok) {
-        throw new Error("ID not found or server error");
+        const text = await response.text().catch(() => "");
+        throw new Error(`Server returned ${response.status} ${response.statusText}: ${text}`);
       }
       const data = await response.json();
       if (data.error) {
@@ -240,7 +258,8 @@ function Analyse() {
       }
       setResult(data);
     } catch (err) {
-      setError(err.message);
+      console.error("Analyse fetch error:", err);
+      setError(err.message || String(err));
     }
   };
 
@@ -268,31 +287,35 @@ function Analyse() {
             <tbody>
               <tr className="odd:bg-white even:bg-slate-50">
                 <td className="border border-slate-300 px-4 py-2">Name</td>
-                <td className="border border-slate-300 px-4 py-2">{result.name || "-"}</td>
+                <td className="border border-slate-300 px-4 py-2">{formatCellValue(result.name)}</td>
               </tr>
               <tr className="odd:bg-white even:bg-slate-50">
                 <td className="border border-slate-300 px-4 py-2">Age</td>
-                <td className="border border-slate-300 px-4 py-2">{result.age ?? "-"}</td>
+                <td className="border border-slate-300 px-4 py-2">{formatCellValue(result.age)}</td>
               </tr>
               <tr className="odd:bg-white even:bg-slate-50">
                 <td className="border border-slate-300 px-4 py-2">DNA Sequence</td>
-                <td className="border border-slate-300 px-4 py-2 break-all">{result.seq || "-"}</td>
+                <td className="border border-slate-300 px-4 py-2 break-all">{formatCellValue(result.seq)}</td>
               </tr>
               <tr className="odd:bg-white even:bg-slate-50">
                 <td className="border border-slate-300 px-4 py-2">Transcribed (mRNA)</td>
-                <td className="border border-slate-300 px-4 py-2 break-all">{result.transcribed || "-"}</td>
+                <td className="border border-slate-300 px-4 py-2 break-all">{formatCellValue(result.transcribed)}</td>
               </tr>
               <tr className="odd:bg-white even:bg-slate-50">
                 <td className="border border-slate-300 px-4 py-2">Complement</td>
-                <td className="border border-slate-300 px-4 py-2 break-all">{result.complement || "-"}</td>
+                <td className="border border-slate-300 px-4 py-2 break-all">{formatCellValue(result.complement)}</td>
+              </tr>
+              <tr className="odd:bg-white even:bg-slate-50">
+                <td className="border border-slate-300 px-4 py-2">Translated</td>
+                <td className="border border-slate-300 px-4 py-2 break-all">{formatCellValue(result.translated)}</td>
               </tr>
               <tr className="odd:bg-white even:bg-slate-50">
                 <td className="border border-slate-300 px-4 py-2">Start Codon Index (AUG)</td>
-                <td className="border border-slate-300 px-4 py-2">{formatCodonIndex(result.start_codon_index)}</td>
+                <td className="border border-slate-300 px-4 py-2">{formatCellValue(result.start_codon_index)}</td>
               </tr>
               <tr className="odd:bg-white even:bg-slate-50">
                 <td className="border border-slate-300 px-4 py-2">Stop Codon Index</td>
-                <td className="border border-slate-300 px-4 py-2">{formatCodonIndex(result.stop_codon_index)}</td>
+                <td className="border border-slate-300 px-4 py-2">{formatCellValue(result.stop_codon_index)}</td>
               </tr>
             </tbody>
           </table>
@@ -316,9 +339,10 @@ function View() {
     }
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/Data/${inputId}`);
+      const response = await fetch(`${API_BASE}/Data/${inputId}`);
       if (!response.ok) {
-        throw new Error("ID not found or server error");
+        const text = await response.text().catch(() => "");
+        throw new Error(`Server returned ${response.status} ${response.statusText}: ${text}`);
       }
       const d = await response.json();
       if (d.error) {
@@ -326,7 +350,8 @@ function View() {
       }
       setData(d);
     } catch (err) {
-      setError(err.message);
+      console.error("View fetch error:", err);
+      setError(err.message || String(err));
     }
   };
 
@@ -354,35 +379,39 @@ function View() {
             <tbody>
               <tr className="odd:bg-white even:bg-slate-50">
                 <td className="border border-slate-300 px-4 py-2">ID</td>
-                <td className="border border-slate-300 px-4 py-2">{inputId}</td>
+                <td className="border border-slate-300 px-4 py-2">{formatCellValue(inputId)}</td>
               </tr>
               <tr className="odd:bg-white even:bg-slate-50">
                 <td className="border border-slate-300 px-4 py-2">Name</td>
-                <td className="border border-slate-300 px-4 py-2">{data.name || "-"}</td>
+                <td className="border border-slate-300 px-4 py-2">{formatCellValue(data.name)}</td>
               </tr>
               <tr className="odd:bg-white even:bg-slate-50">
                 <td className="border border-slate-300 px-4 py-2">Age</td>
-                <td className="border border-slate-300 px-4 py-2">{data.age ?? "-"}</td>
+                <td className="border border-slate-300 px-4 py-2">{formatCellValue(data.age)}</td>
               </tr>
               <tr className="odd:bg-white even:bg-slate-50">
                 <td className="border border-slate-300 px-4 py-2">DNA Sequence</td>
-                <td className="border border-slate-300 px-4 py-2 break-all">{data.seq || "-"}</td>
+                <td className="border border-slate-300 px-4 py-2 break-all">{formatCellValue(data.seq)}</td>
               </tr>
               <tr className="odd:bg-white even:bg-slate-50">
                 <td className="border border-slate-300 px-4 py-2">Transcribed (mRNA)</td>
-                <td className="border border-slate-300 px-4 py-2 break-all">{data.transcribed || "-"}</td>
+                <td className="border border-slate-300 px-4 py-2 break-all">{formatCellValue(data.transcribed)}</td>
               </tr>
               <tr className="odd:bg-white even:bg-slate-50">
                 <td className="border border-slate-300 px-4 py-2">Complement</td>
-                <td className="border border-slate-300 px-4 py-2 break-all">{data.complement || "-"}</td>
+                <td className="border border-slate-300 px-4 py-2 break-all">{formatCellValue(data.complement)}</td>
+              </tr>
+              <tr className="odd:bg-white even:bg-slate-50">
+                <td className="border border-slate-300 px-4 py-2">Translated</td>
+                <td className="border border-slate-300 px-4 py-2 break-all">{formatCellValue(data.translated)}</td>
               </tr>
               <tr className="odd:bg-white even:bg-slate-50">
                 <td className="border border-slate-300 px-4 py-2">Start Codon Index (AUG)</td>
-                <td className="border border-slate-300 px-4 py-2">{formatCodonIndex(data.start_codon_index)}</td>
+                <td className="border border-slate-300 px-4 py-2">{formatCellValue(data.start_codon_index)}</td>
               </tr>
               <tr className="odd:bg-white even:bg-slate-50">
                 <td className="border border-slate-300 px-4 py-2">Stop Codon Index</td>
-                <td className="border border-slate-300 px-4 py-2">{formatCodonIndex(data.stop_codon_index)}</td>
+                <td className="border border-slate-300 px-4 py-2">{formatCellValue(data.stop_codon_index)}</td>
               </tr>
             </tbody>
           </table>
@@ -401,9 +430,10 @@ function List() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("http://127.0.0.1:8000/Data");
+      const response = await fetch(`${API_BASE}/Data`);
       if (!response.ok) {
-        throw new Error("Unable to fetch data");
+        const text = await response.text().catch(() => "");
+        throw new Error(`Server returned ${response.status} ${response.statusText}: ${text}`);
       }
       const responseData = await response.json();
       if (Array.isArray(responseData)) {
@@ -412,7 +442,8 @@ function List() {
         setRows([]);
       }
     } catch (err) {
-      setError(err.message);
+      console.error("List fetch error:", err);
+      setError(err.message || String(err));
       setRows([]);
     } finally {
       setLoading(false);
@@ -449,6 +480,7 @@ function List() {
                 <th className="border px-4 py-2 text-left">Sequence</th>
                 <th className="border px-4 py-2 text-left">Transcribed</th>
                 <th className="border px-4 py-2 text-left">Complement</th>
+                <th className="border px-4 py-2 text-left">Translated</th>
                 <th className="border px-4 py-2 text-left">Start Codon</th>
                 <th className="border px-4 py-2 text-left">Stop Codon</th>
               </tr>
@@ -456,21 +488,22 @@ function List() {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td className="border px-4 py-2 text-center" colSpan={8}>
+                  <td className="border px-4 py-2 text-center" colSpan={9}>
                     No data found
                   </td>
                 </tr>
               ) : (
                 rows.map((row) => (
                   <tr key={row.id} className="odd:bg-white even:bg-slate-50">
-                    <td className="border px-4 py-2">{row.id}</td>
-                    <td className="border px-4 py-2">{row.name}</td>
-                    <td className="border px-4 py-2">{row.age}</td>
-                    <td className="border px-4 py-2 break-all">{row.seq}</td>
-                    <td className="border px-4 py-2 break-all">{row.transcribed || "-"}</td>
-                    <td className="border px-4 py-2 break-all">{row.complement || "-"}</td>
-                    <td className="border px-4 py-2">{formatCodonIndex(row.start_codon_index)}</td>
-                    <td className="border px-4 py-2">{formatCodonIndex(row.stop_codon_index)}</td>
+                    <td className="border px-4 py-2">{formatCellValue(row.id)}</td>
+                    <td className="border px-4 py-2">{formatCellValue(row.name)}</td>
+                    <td className="border px-4 py-2">{formatCellValue(row.age)}</td>
+                    <td className="border px-4 py-2 break-all">{formatCellValue(row.seq)}</td>
+                    <td className="border px-4 py-2 break-all">{formatCellValue(row.transcribed)}</td>
+                    <td className="border px-4 py-2 break-all">{formatCellValue(row.complement)}</td>
+                    <td className="border px-4 py-2 break-all">{formatCellValue(row.translated)}</td>
+                    <td className="border px-4 py-2">{formatCellValue(row.start_codon_index)}</td>
+                    <td className="border px-4 py-2">{formatCellValue(row.stop_codon_index)}</td>
                   </tr>
                 ))
               )}
