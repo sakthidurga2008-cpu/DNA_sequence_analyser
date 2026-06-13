@@ -77,6 +77,19 @@ Frontend runs at: `http://localhost:3000`
 
 > Note: Backend CORS currently allows only `http://localhost:3000`.
 
+### Run frontend with Docker
+
+From project root:
+
+```bash
+docker build -t dna-sa-ui ./UI
+docker run --rm -p 3000:80 dna-sa-ui
+```
+
+Frontend runs at: `http://localhost:3000`
+
+Keep the backend running at `http://localhost:8000` so the UI can reach the API.
+
 ---
 
 ## How to Use
