@@ -1,119 +1,85 @@
 # DNA_SA
 
-A simple DNA Sequence Analysis app with:
-- **Backend**: FastAPI (`main.py`)
-- **Frontend**: React + Tailwind (`UI/`)
+DNA sequence analysis app with a FastAPI backend and a Vite + React UI.
 
-You can upload DNA records, view records, list all records, and run DNA analysis (transcription, complement, start/stop codon index).
+## Key Features
 
-## Features
+- Validate DNA sequences (`A`, `C`, `G`, `T` only)
+- Store records in memory (no database)
+- Analyse sequences: length, counts, GC/AT %, complement, reverse complement, transcription, translation, ORFs
+- Upload FASTA files and auto-create records
+- Compare two sequences for similarity
+- Run NCBI BLAST homology and download results
 
-- Validate DNA sequence input (`A`, `C`, `G`, `T` only)
-- Save record with `name`, `age`, and `seq`
-- Analyse sequence to compute:
-  - `transcribed` (DNA -> mRNA)
-  - `complement`
-  - `start_codon_index` (`AUG`)
-  - `stop_codon_index` (first in-frame `UAA`, `UAG`, `UGA`)
+## Tech Stack
 
----
+- **Backend**: FastAPI, Pydantic, Requests, Biopython
+- **Frontend**: React 19, Vite, Tailwind CSS
+- **Tools**: ESLint, jsPDF
 
 ## Project Structure
 
 ```text
 DNA_SA/
 ├── analyse.py
+├── blast.py
 ├── main.py
-├── test_client.py
+├── blast_results.txt
 └── UI/
     ├── package.json
     └── src/
 ```
-
----
 
 ## Prerequisites
 
 - Python 3.10+
 - Node.js 18+ and npm
 
----
-
 ## Backend Setup (FastAPI)
-
-From project root:
 
 ```bash
 cd /home/sakthi/github/DNA_SA
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
-pip install fastapi uvicorn requests
+pip install fastapi uvicorn requests biopython
 ```
 
-### Run backend
+Run backend:
 
 ```bash
 uvicorn main:app --reload
 ```
 
-Backend runs at: `http://127.0.0.1:8000`
+Backend: `http://127.0.0.1:8000`  
+Docs: `http://127.0.0.1:8000/docs`
 
-Swagger docs: `http://127.0.0.1:8000/docs`
-
----
-
-## Frontend Setup (React)
-
-Open a new terminal:
+## Frontend Setup (Vite + React)
 
 ```bash
 cd /home/sakthi/github/DNA_SA/UI
 npm install
-npm start
+npm run dev
 ```
 
-Frontend runs at: `http://localhost:3000`
-
-> Note: Backend CORS currently allows only `http://localhost:3000`.
-
----
-
-## How to Use
-
-1. Start backend (`uvicorn main:app --reload`).
-2. Start frontend (`npm start` inside `UI`).
-3. Open `http://localhost:3000`.
-4. Use pages:
-   - **Upload**: create a DNA record.
-   - **Analyse**: run analysis by record ID.
-   - **View**: fetch one record by ID.
-   - **List**: see all uploaded records.
-
----
+Frontend: `http://localhost:5173`  
+Note: CORS allows `http://localhost:5173` and `http://localhost:3000`.
 
 ## API Endpoints
 
-- `GET /` - health/greeting
+- `GET /` - health check
 - `GET /Data` - list all records
 - `GET /Data/{id}` - get one record
-- `POST /Data/{id}` - create record (request id is not used internally; backend auto-assigns next id)
+- `POST /Data` - create record (auto-assigns id)
 - `GET /Data/analyse/{id}` - analyse record by id
+- `POST /Data/Upload/file` - upload FASTA file
+- `GET /Data/compare/{id1}/{id2}` - similarity percentage
+- `POST /Data/homology/download` - run NCBI BLAST and download report
 
----
-
-## Sample `curl` Commands
-
-### 1) Check service
-
-```bash
-curl -X GET "http://127.0.0.1:8000/"
-```
-
-### 2) Create a DNA record
+### Create a record
 
 ```bash
-curl -X POST "http://127.0.0.1:8000/Data/1" \
+curl -X POST "http://127.0.0.1:8000/Data" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "sakthi",
@@ -122,40 +88,35 @@ curl -X POST "http://127.0.0.1:8000/Data/1" \
   }'
 ```
 
-### 3) List all records
-
-```bash
-curl -X GET "http://127.0.0.1:8000/Data"
-```
-
-### 4) Get one record by ID
-
-```bash
-curl -X GET "http://127.0.0.1:8000/Data/1"
-```
-
-### 5) Analyse a record by ID
+### Analyse a record
 
 ```bash
 curl -X GET "http://127.0.0.1:8000/Data/analyse/1"
 ```
 
-### 6) Try invalid DNA (validation error)
+### Upload FASTA
 
 ```bash
-curl -X POST "http://127.0.0.1:8000/Data/2" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "invalid_case",
-    "age": 20,
-    "seq": "ATGBXZ"
-  }'
+curl -X POST "http://127.0.0.1:8000/Data/Upload/file" \
+  -F "file=@/path/to/sample.fasta"
 ```
 
----
+### Compare two records
 
-## Quick Troubleshooting
+```bash
+curl -X GET "http://127.0.0.1:8000/Data/compare/1/2"
+```
 
-- If frontend fails with `npm run dev`: use `npm start` (this project uses `react-scripts`).
-- If port `8000` is busy, stop existing process and rerun `uvicorn`.
-- If CORS error appears, ensure frontend is opened via `http://localhost:3000`.
+### BLAST homology download
+
+```bash
+curl -X POST "http://127.0.0.1:8000/Data/homology/download" \
+  -H "Content-Type: application/json" \
+  -d '{"seq": "ATGAAATTTTAA"}' \
+  -o blast_results.txt
+```
+
+## Notes
+
+- Records are stored in memory and reset on server restart.
+- `blast.py` is a standalone script for BLAST experimentation.
